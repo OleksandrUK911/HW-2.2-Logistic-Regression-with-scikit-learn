@@ -11,68 +11,79 @@
 
 ---
 
-## 🛠 Використані методи
+## 🛠 Використані методи та Технології
 
 - 📦 **Pandas, Scikit-Learn** — для обробки даних і моделювання
-- 🔍 **Stratified train/validation split**
-- ⚙️ **Передобробка:**
-  - Масштабування числових ознак (`StandardScaler`)
-  - Імпутація пропущених значень (`SimpleImputer`)
-  - Кодування категоріальних ознак (`OneHotEncoder`)
-  - Видалення нерелевантних колонок (`id`, `Surname`, `CustomerId`)
-- 🤖 **Модель:** `LogisticRegression`
+- 🔍 **Stratified train/validation split** (80/20) — для збереження балансу класів
+- ⚙️ **Передобробка даних (`ColumnTransformer` + `Pipeline`):**
+  - **Числові ознаки** (`CreditScore`, `Age`, `Tenure`, `Balance`, `NumOfProducts`, `HasCrCard`, `IsActiveMember`, `EstimatedSalary`):
+    - Імпутація пропусків середнім значенням (`SimpleImputer(strategy='mean')`)
+    - Масштабування (`StandardScaler`)
+  - **Категоріальні ознаки** (`Geography`, `Gender`):
+    - Імпутація пропусків модою (`SimpleImputer(strategy='most_frequent')`)
+    - Кодування (`OneHotEncoder(handle_unknown='ignore')`)
+  - **Видалення нерелевантних колонок**: `id`, `Surname`, `CustomerId`
+- 🤖 **Модель:** `LogisticRegression(max_iter=1000, random_state=42)`
 - 🎯 **Метрики оцінки:**
   - `Accuracy`
   - `F1 Score`
   - `ROC AUC`
   - `Confusion Matrix`
-  - `ROC Curve`
 
 ---
 
-## 🔁 Повний пайплайн
+## 🔁 Повний пайплайн реалізації
 
-1. Зчитування `train.csv`, `test.csv`, `sample_submission.csv`
-2. Розбиття на train/validation з використанням `train_test_split` + stratify
-3. Побудова окремих датасетів `train_inputs`, `train_targets`, `val_inputs`, `val_targets`
-4. Побудова препроцесора (`ColumnTransformer`)
-5. Навчання моделі `LogisticRegression`
-6. Оцінка на validation
-7. Побудова submission-файлу `submission_log_reg.csv`
-8. Збереження моделі (`joblib`)
-9. Створення функції `predict_raw_df_preprocessor(...)` для передбачення на нових даних
+1. **Завантаження та аналіз даних**: Зчитування `train.csv`, `test.csv`.
+2. **Розбиття даних**: Використання `train_test_split` з параметром `stratify=y` для коректного розподілу цільової змінної.
+3. **Побудова препроцесора**: Створення пайплайнів для автоматичної обробки числових та категоріальних даних.
+4. **Збереження проміжних даних**: Оброблені дані зберігаються у форматі `.parquet` для швидкого доступу.
+5. **Навчання моделі**: Тренування логістичної регресії на підготовлених даних.
+6. **Оцінка якості**: Розрахунок метрик на валідаційній вибірці.
+7. **Збереження артефактів**: Модель зберігається у файл `log_reg.joblib`.
+8. **Функція передбачення**: Реалізовано функцію `predict_raw_df_preprocessor`, яка приймає сирі дані, обробляє їх і видає ймовірності.
+9. **Сабміт**: Генерація файлу `submission_log_reg.csv` для Kaggle.
 
 ---
 
-## 📁 Файли
+## 📁 Структура файлів
 
-- `train.csv`, `test.csv`, `sample_submission.csv` — дані з Kaggle
-- `submission_log_reg.csv` — файл, готовий для сабміту
-- `log_reg.joblib` — збережена модель
-- `notebook.ipynb` — основна реалізація (працює у Google Colab)
+- `train.csv`, `test.csv`, `sample_submission.csv` — вхідні дані з Kaggle
+- `submission_log_reg.csv` — згенерований файл з передбаченнями
+- `log_reg.joblib` — збережена навчена модель
+- `processed_data/` — папка з обробленими даними у форматі parquet
+- `notebook.ipynb` — Jupyter Notebook з повним кодом рішення
 
 ---
 
 ## 🚀 Як запустити
 
-1. Відкрити Google Colab.
-2. Завантажити CSV-файли в `/content/`.
-3. Запустити cells у ноутбуці.
-4. Згенерувати `submission_log_reg.csv`.
-5. Завантажити на Kaggle через вкладку **Submit Predictions**.
+1. Відкрити Google Colab або Jupyter Notebook.
+2. Завантажити необхідні бібліотеки (`pandas`, `sklearn`, `joblib`, `matplotlib`).
+3. Завантажити датасети у робочу директорію.
+4. Виконати всі комірки ноутбука послідовно.
+5. Отримати файл `submission_log_reg.csv` для завантаження на Kaggle.
 
 ---
 
-## 📌 Приклад сабміту
-CustomerId,Exited
-15634602,0
-15647311,0
-15619304,0
-15701354,0
+## 🏁 Результати моделі
 
+Логістична регресія показала наступні результати на валідаційній вибірці:
+
+- **Train Accuracy**: ~0.8745
+- **Val Accuracy**: ~0.8697
+- **ROC AUC**: ~0.8797
+
+Модель демонструє стабільність (відсутність сильного перенавчання) і значно перевершує випадкове вгадування (ROC AUC > 0.5).
 
 ---
 
-## 🏁 Результат
+## 📌 Приклад використання функції передбачення
 
-Базова модель `LogisticRegression` із коректною передобробкою показала стабільні метрики (accuracy, ROC AUC) і перевершує наївну модель мажоритарного класу.
+```python
+# Завантаження моделі
+model = joblib.load('log_reg.joblib')
+
+# Передбачення на нових сирих даних
+probas = predict_raw_df_preprocessor(preprocessor, model, new_data_df)
+```
